@@ -91,6 +91,36 @@ tpl_term(int type, const char *str, size_t len, void *data)
 	}
 }
 
+/**
+ * This function exists because lua_tostring does not use
+ * __tostring metamethod, and this metamethod has to be used
+ * if we want to print Lua userdata correctly.
+ */
+static const char *
+luaT_tostring(lua_State *L, int idx)
+{
+	if (!luaL_callmeta(L, idx, "__tostring")) {
+		switch (lua_type(L, idx)) {
+			case LUA_TNUMBER:
+			case LUA_TSTRING:
+				return lua_tostring(L, idx);
+			case LUA_TBOOLEAN: {
+				int val = lua_toboolean(L, idx);
+				lua_pushstring(L, val ? "true" : "false");
+				break;
+			}
+			case LUA_TNIL:
+				lua_pushliteral(L, "nil");
+				break;
+			default:
+				lua_pushfstring(L, "%s: %p", luaL_typename(L, idx),
+								lua_topointer(L, idx));
+		}
+	}
+
+	return lua_tostring(L, -1);
+}
+
 static int
 lbox_httpd_escape_html(struct lua_State *L)
 {
@@ -109,14 +139,7 @@ lbox_httpd_escape_html(struct lua_State *L)
 	}
 
 	for (i = 1; i <= top; i++) {
-		if (lua_isnil(L, i)) {
-			luaL_addstring(&b, "nil");
-			continue;
-		}
-		const char *s = lua_tostring(L, i);
-		if (s == NULL) {
-			continue;
-		}
+		const char *s = luaT_tostring(L, i);
 		for (; *s; s++) {
 			switch(*s) {
 				case '&':
