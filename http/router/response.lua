@@ -92,6 +92,14 @@ local function setcookie(resp, cookie, options)
     if cookie.domain ~= nil then
         str = utils.sprintf('%s;domain=%s', str, cookie.domain)
     end
+    
+    if cookie.samesite ~= nil then
+        str = utils.sprintf('%s;SameSite=%s', str, cookie.samesite)
+    end
+    
+    if cookie.secure == true then
+        str = utils.sprintf('%s;Secure', str)
+    end
 
     if cookie.expires ~= nil then
         str = utils.sprintf('%s;expires=%s', str, expires_str(cookie.expires))
